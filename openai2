@@ -1,0 +1,192 @@
+import time
+import requests
+from bs4 import BeautifulSoup as bs
+import base64
+import csv
+from csv import writer
+import random
+
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import ssl
+import re
+ssl._create_default_https_context = ssl._create_unverified_context
+import urllib.request
+
+from urllib.parse import urljoin
+import os
+import json
+import pandas as pd
+import cloudscraper
+scraper = cloudscraper.create_scraper()
+
+import openai
+openai.api_key = ''
+# openai.api_key = ''
+
+# wp app user & pass code--------------------
+website_name = ""
+Username = ""
+App_pass = ""
+
+# Wordpress posting Authenticate-------------
+json_url = 'https://'+website_name + '/wp-json/wp/v2'
+token = base64.standard_b64encode((Username + ':' + App_pass).encode('utf-8'))  # we have to encode the usr and pw
+headers = {'Authorization': 'Basic ' + token.decode('utf-8')}
+
+# ❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️
+def listToString(s):
+    str1 = " "
+    return (str1.join(s))
+
+
+def linkss(text):
+    my_linkss = '<button class="btn1><i class="fa fa-download"></i> <br><a href=' + text + "><strong>Online Reading PDF Link</strong></a></button>(অনলাইনে Direct link)"
+    return my_linkss
+
+def linkred(text):
+    my_linkred = '<button class="btn2"><i class="fa fa-download"></i> <br><a href="' + text + '" rel="nofollow noopener"><span style="color: #ff0000;"><strong>PDF Downnload Link 1</strong></span></a></button>(free)'
+    return my_linkred
+
+def linkred2(text):
+    my_linkred2 = '<button class="btn3"><i class="fa fa-download"></i> <br><a href="' + text + '" target="_blank" rel="nofollow noopener"><span style="color: #ff0000;"><strong>PDF Downnload Link 2</strong></span></a></button>(Alternative)'
+    return my_linkred2
+
+
+def wpp(text):
+    my_paragraph = '<!-- wp:paragraph --><p>' + text + '</p><!-- /wp:paragraph -->'
+    return my_paragraph
+
+def wph2(text):
+    my_heading = '<!-- wp:heading --><h2>' + text + '</h2><!-- /wp:heading -->'
+    return my_heading
+
+def wph3(text):
+    my_heading3 = '<!-- wp:heading --><h3>' + text + '</h3><!-- /wp:heading -->'
+    return my_heading3
+
+def wph4(text):
+    my_heading4 = '<!-- wp:heading --><h4>' + text + '</h4><!-- /wp:heading -->'
+    return my_heading4
+
+def wpImg(url, anchor):
+    return '<!-- wp:image {"sizeSlug":"large"} --><figure class="wp-block-image size-large"><img src="' + url + '\" alt=\"' + anchor + '"/></figure><!-- /wp:image -->'
+
+
+def table_dict(dictionary):
+    if isinstance(dictionary, str):
+        return '<td>' + dictionary + '</td>'
+    s = ['<!-- wp:table --><figure class="wp-table"><table><tbody>']
+    for key, value in dictionary.items():
+        s.append('<tr><td>%s</td>' % key)
+        # s.append('<tr><td>'+key+'</td>')
+        s.append('<td>%s</td>' % value)
+        s.append('</tr>')
+    s.append('</tbody></table></figure><!-- /wp:table -->')
+    return ''.join(s)
+
+
+def wpList(li1, li2, li3, li4, li5, li6, li7):
+    return '<!-- wp:list --><ul><strong><li>' + li1 + '</li><li>' + li2 + '</li><li>' + li3 + '</li><li>' + li4 + '</li><li>' + li5 + '</li><li>' + li6 + '</li><li>' + li7 + '</li></strong></ul><!-- /wp:list -->'
+
+
+# ❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️
+keyword = input("Enter your keyword: ")
+# keyword = 'title keyword'
+
+
+# openai_generate intro + faq ❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️
+
+# keyword = input("Enter your keyword: ")
+prompt = f'write three questions about {keyword}'
+
+def oai_answer(prompt):
+    response = openai.Completion.create(
+        model="text-davinci-003",
+        prompt=prompt,
+        temperature=0.7,
+        max_tokens=256,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+    )
+    output = response.get('choices')[0].get('text')
+    return output
+
+questions = oai_answer(prompt)
+questions_list = questions.strip().split('\n')
+end_line = 'write a paragraph about it'
+
+qna = {}
+for q in questions_list:
+    command = f'{q} {end_line}'
+    answer = oai_answer(command).strip().strip('\n')
+    qna[q] = answer
+# print(qna)
+
+content = ''
+for key, value in qna.items():
+    qn = wph3(key)
+    ans = wpp(value)
+    temp = qn+ans
+    content += temp
+print(content)
+
+
+def q_faq(textq):
+    code = '{"@type":"Question","name":"' + str(textq) + '",'
+    return code
+
+def a_faq(texta):
+    code = '"acceptedAnswer":{"@type":"Answer","text":"' + str(texta) + '"}},'
+    return code
+
+faqcontent = ''
+for key, value in qna.items():
+    qnfaq = q_faq(key)
+    ansfaq = a_faq(value)
+    tempfaq = qnfaq+ansfaq
+    faqcontent += tempfaq
+
+intro_content_Openai = oai_answer(f'write an intro about {keyword}').strip().strip('\n')
+print(intro_content_Openai)
+
+describe_content_Openai = oai_answer(f'write 10 bulletpoint about {keyword}')
+print(describe_content_Openai)
+
+
+# WP Post Format ❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️
+
+title = keyword
+slug_keywords = keyword.replace(' ', '-')
+
+intro_paragraph = wpp(intro_content_Openai)
+h2_one = wph2(keyword)
+h2_two = wph2('See Details')
+
+
+post_body = intro_paragraph + h2_one + describe_content_Openai + faqcontent + h2_two
+print(post_body)
+
+
+# category_id = create_category('keyword')
+# tag_id = create_tag('keyword')
+
+status = "draft"  # publish_draft
+
+post = {'title': title,
+        'slug': slug_keywords,
+        'status': status,
+        'content': post_body,
+        'format': 'standard',
+        # 'featured_media': int(img_id),
+        # 'author': '1',
+        # 'categories': [category_id],
+        # 'tags': [tag_id],
+        }
+
+# Posting Request---------------------------
+r = scraper.post(json_url + '/posts', headers=headers, json=post)
+if r.status_code == 201:
+  print('https://' + website_name + '/' + keyword.replace(' ', '-') + ' Has Been Posted')
+else:
+  print(r.status_code,'error')
